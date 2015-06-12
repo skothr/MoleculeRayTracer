@@ -10,11 +10,14 @@
 
 class Material;
 
+//Defines a rectangle/parallelogram (havent tested that yet) in world space by 3 points.
+//	- If drawOnly is true, the rect will just be rendered without otherwise affecting the scene.
+//		(set to true for shapes that represent lights, so the shape doesn't block it).
+//	- The index is the index of this shape's information in the rectList shader uniform.
 class RectObject : public RayObject
 {
 protected:
-	//The rect is defined by 3 points
-	Point3f points[3];
+	Point3f points[3];	//The rect is defined by 3 points
 	bool drawOnly;
 	int index = -1;
 

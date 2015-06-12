@@ -14,10 +14,14 @@ enum class LightType
 
 class ShaderProgram;
 
+
+//Base class for lights.
+//	- All lights have a Color, and a constant to tell what kind of light it is.
+
 class Light
 {
 protected:
-	LightType	type;
+	const LightType	type;
 	Color		color;
 
 public:

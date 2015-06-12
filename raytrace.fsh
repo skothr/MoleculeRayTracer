@@ -1,11 +1,13 @@
 #version 330
 
+//A ray that can be traced
 struct Ray
 {
 	vec3	origin,
 			direction;
 };
 
+//Represents the values of a ray that hits an object
 struct RayHit
 {
 	int		matIndex;
@@ -14,8 +16,10 @@ struct RayHit
 	float	t0;
 };
 
+//Moves the ray origin slightly outside of the shape it just hit to minimize floating point errors
 #define RAY_ORIGIN_SURFACE_OFFSET 0.001
 
+//Maximum number of each object (Also set in the objects' .h files)
 #define MAX_SPHERES 90
 #define MAX_RECTS 8
 #define MAX_MATERIALS 8
@@ -24,6 +28,9 @@ struct RayHit
 
 #define NOISE_TEX_SIZE 64
 
+//(See .h files for a better description of the values)
+
+//Defines a sphere
 struct Sphere
 {
 	vec3	center;
@@ -32,6 +39,7 @@ struct Sphere
 	int		drawOnly;
 };
 
+//Defines a rectangle 
 struct Rect
 {
 	vec3	points[3];
@@ -39,6 +47,7 @@ struct Rect
 	int		drawOnly;
 };
 
+//Defines a material that can be applied to multiple objects (referenced by its index in the materials array)
 struct Material
 {
 	vec3	ambient,
@@ -48,12 +57,14 @@ struct Material
 	float	shininess;
 };
 
+//Defines a point light source.
 struct PointLight
 {
 	vec3	pos,
 			color;
 };
 
+//Defines a rectangular area light.
 struct RectAreaLight
 {
 	vec3	points[3],
@@ -62,16 +73,19 @@ struct RectAreaLight
 
 layout(location = 0) out vec4 fragColor;
 
+//AA/AO/shadow controllers (AA and AO not implemented currently)
 uniform int aaLevel;
 uniform int aoSamples;
 uniform int shadowDivision;
 
+//Lists of objects passed from the cpu
 uniform Material		materials[MAX_MATERIALS];
 uniform Rect			rectList[MAX_RECTS];
 uniform Sphere			sphereList[MAX_SPHERES];
 uniform PointLight		pointLights[MAX_POINT_LIGHTS];
 uniform RectAreaLight	rectAreaLights[MAX_RECT_AREA_LIGHTS];
 
+//The number of currently active objects in each list
 uniform int numMaterials;
 uniform int numSpheres;
 uniform int numRects;
@@ -79,6 +93,7 @@ uniform int numPointLights;
 uniform int numRectAreaLights;
 
 //If this is non-zero, the background should act as an area light.
+//	(not done)
 uniform int backgroundLight;
 
 uniform sampler2D noiseTex;
@@ -86,6 +101,7 @@ uniform sampler2D noiseTex;
 smooth in vec2 texCoord;
 smooth in Ray worldRay;
 
+//Helper functions
 float lerp(float v0, float v1, float t)
 {
   return (1-t)*v0 + t*v1;
@@ -97,32 +113,38 @@ vec3 lerp(vec3 v0, vec3 v1, float t)
 }
 
 
+//Intersection prototypes//
+
+//Tests/intersects all currently implemented shapes
 RayHit closestIntersection(Ray r);
 bool testAnyHit(Ray r, float t_cutoff);
 
-
-//Intersects a transformed ray with the unit sphere centered at the origin
+//Tests/intersects all spheres
 float intersectSphere(Ray r, Sphere s, inout RayHit hit);
 bool testSphereHit(Ray r, Sphere s, float t_cutoff);
 
+//Tests/intersects all rects
 float intersectRect(Ray r, Rect p, inout RayHit hit);
 bool testRectHit(Ray r, Rect p, float t_cutoff);
 
 void main()
 {
+	//Get a copy of the given world ray, and normalize just to be sure
 	Ray r;
 	r.origin = worldRay.origin;
 	r.direction = normalize(worldRay.direction);
 
+	//Find the RayHit object at the closest intersection point
 	RayHit hit = closestIntersection(r);
 
 	if(hit.t0 < 0.0)
 	{
+		//Didn't hit anything, just set background to grey
 		fragColor = vec4(0.5, 0.5, 0.5, 1.0);
 	}
 	else if(backgroundLight != 0)
 	{
-	
+		//TODO
 		
 
 	}
@@ -140,23 +162,27 @@ void main()
 		//Point lights
 		for(int i = 0; i < numPointLights; i++)
 		{
+			//Get light
 			PointLight l = pointLights[i];
 
+			//Get vector from hit point to the light, find the length and normalize
 			vec3 L = l.pos - hit.hitPoint;
 			float dist = sqrt(dot(L, L));
 			L /= dist;
 
+			//Create a new ray from the hitpoint to the light to test for shadows
 			Ray shadow_test;
 			shadow_test.origin = hit.hitPoint;
 			shadow_test.direction = L;
 		
+			//Multiplier that negates any light if there was something blocking it
 			float blockCheck = testAnyHit(shadow_test, dist) ? 0.0 : 1.0;
-			//float blockCheck = 1.0;
+			//float blockCheck = 1.0;	//<-- for no shadows
 
-			//Diffuse
+			//Calculate diffuse lighting
 			diff += dot(hit.normal, L)*blockCheck;
 
-			//Specular
+			//Calculate specular lighting
 			vec3 halfVec = normalize(normalize(-r.direction) + L);
 			spec += pow(clamp(dot(hit.normal, halfVec), 0.0, 1.0), mat.shininess)*blockCheck;
 		}
@@ -166,7 +192,7 @@ void main()
 		{
 			RectAreaLight l = rectAreaLights[i];
 
-			//Vectors to traverse the rectangle
+			//Vectors to traverse the rectangle (from center point, which should be at index 0)
 			vec3	dir1 = (l.points[1] - l.points[0])*(1.0/shadowDivision),
 					dir2 = (l.points[2] - l.points[0])*(1.0/shadowDivision),
 
@@ -179,13 +205,17 @@ void main()
 			
 			vec2 noise_vec = texture(noiseTex, hit.hitPoint.xy).xz;
 
-			//For each shadow sample
+			//For each shadow sample, calculate the contributing light values and average.
+			//	- rectangle/parallelogram is divided up into a shadowDivision by shadowDivision grid
 			for(int j1 = 0; j1 < shadowDivision; j1++)
 			{
 				for(int j2 = 0; j2 < shadowDivision; j2++)
 				{
+					//Find the point on the rectangle to sample
 					vec3 light_p = base_p + dir1*(float(j1) + noise_vec.x)
 										  + dir2*(float(j2) + noise_vec.y);
+
+					//Now do the same thing as with the point lights
 					vec3 L = light_p - hit.hitPoint;
 					float dist = sqrt(dot(L, L));
 					L /= dist;
@@ -196,6 +226,7 @@ void main()
 
 					float blockCheck = testAnyHit(shadow_test, dist) ? 0.0 : 1.0;
 
+					//Add to the average
 					area_diff += dot(hit.normal, L)*blockCheck;
 					//vec3 halfVec = normalize(L - r.direction);
 					//area_spec += pow(clamp(dot(hit.normal, halfVec), 0.0, 1.0), mat.shininess)*blockCheck;
@@ -207,6 +238,8 @@ void main()
 		}
 	
 		//Ambient Occlusion
+		//(In progress)
+		
 		float visibility = 0.0;
 
 		const float radius = 1.0;
@@ -245,26 +278,12 @@ RayHit closestIntersection(Ray r)
 	for(int i = 0; i < numSpheres; i++)
 	{
 		intersectSphere(r, sphereList[i], hit);
-
-		//bool closer = (t >= 0.0 && (hit.t0 < 0.0 || t < hit.t0));
-
-		//hit.t0 = closer ? t : hit.t0;
-		//hit.hitPoint = closer ? r.origin + t*r.direction : hit.hitPoint;
-		//hit.normal = closer ? hit.hitPoint - sphereList[i].center : hit.normal;
-		//hit.matIndex = closer ? sphereList[i].material : hit.matIndex;
 	}
 
 	//Check Rects
 	for(int i = 0; i < numRects; i++)
 	{
 		intersectRect(r, rectList[i], hit);
-
-		//bool closer = (t >= 0.0 && (hit.t0 < 0.0 || t < hit.t0));
-
-		//hit.t0 = closer ? t : hit.t0;
-		//hit.hitPoint = closer ? r.origin + t*r.direction : hit.hitPoint;
-		//hit.normal = closer ? vec3(0.0, 0.0, 1.0) : hit.normal;
-		//hit.matIndex = closer ? rectList[i].material : hit.matIndex;
 
 	}
 

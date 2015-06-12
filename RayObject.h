@@ -14,6 +14,7 @@ typedef RayObjectType RayObjType;
 class ShaderProgram;
 
 //Base class for different types of ray objects
+//	- Just holds what type of object it is
 class RayObject
 {
 private:

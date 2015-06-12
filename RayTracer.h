@@ -7,6 +7,8 @@
 
 #include <unordered_set>
 
+//Tiny vector classes for passing arrays of vectors to the shader
+//	(Something was off with the stride of my templated vector classes, I need to rewrite those)
 struct vec2
 {
 	float x, y;
@@ -33,6 +35,8 @@ struct vec4
 	{ }
 };
 
+//Defines different antialiasing levels (each pixel subdivided by that amount in each dimension)
+//	(currently not implemented in the shader, just sets the uniform)
 enum class AntialiasingLevel
 {
 	INVALID = 0,
@@ -44,12 +48,22 @@ enum class AntialiasingLevel
 	AA16X = 16,
 	AA32X = 32,
 };
-
 typedef AntialiasingLevel AALevel;
+
 
 
 class RayObject;
 
+
+//Main class for raytracing. 
+//	- Holds the main raytracing shader program, and has a full-screen quad VAO/VBO and a noise texture, all of which are passed to the shader.
+//	- Also owns the camera, and controls its movement/rotation with calls from the ActiveElement GUI base class.
+//	- Currently, all RayObjects are statically linked to this class, and their resources can all be sent to the shader
+//		with calls to updateObjects(), updateMaterials(), and updateLights().
+//
+//
+//	- See the README.md for info on how to port it to a non-windows os, or another window wrapper library in case the GUI doesn't work.
+//
 class RayTracer : public Control
 {
 private:

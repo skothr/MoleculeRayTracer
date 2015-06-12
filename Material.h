@@ -9,6 +9,12 @@ class ShaderProgram;
 
 #define MAX_MATERIALS 8
 
+
+//Holds the material properties for an object 
+//	- Can be applied to multiple objects.
+//	- Currently has parameters for blinn-phong lighting.
+//	- LIGHT_MATERIAL is just bright-white emmissive.
+//
 class Material
 {
 protected:

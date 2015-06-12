@@ -8,6 +8,11 @@
 
 class ShaderProgram;
 
+//Class that controls the camera.
+//	- Holds the view and projection matrices, and calculates/updates them with a position, eye(forward) direction,
+//		up direction, near/far z, aspect ratio, and fov.
+//	- Can be rotated with the rotate() function, and the matrices will be recalculated on a call to update()
+
 class Camera 
 {
 private:

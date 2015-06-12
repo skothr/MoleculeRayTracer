@@ -32,12 +32,16 @@ smooth out Ray worldRay;
 
 void main()
 {
+	//-1 -> 1
 	gl_Position = vec4(vertex, 0.0, 1.0);
 
+	//0 --> 1
 	texCoord = vertex*0.5 + 0.5;
 	
+	//Rays start at the camera's position
 	worldRay.origin = camPos;
 
+	//Transform vertices into view space with the inverse projection matrix, and then into world space with the view matrix.
 	worldRay.direction = (invProjMatrix*vec4(vertex, 0.0, 1.0)*viewMatrix).xyz;
 	worldRay.direction = normalize(worldRay.direction);
 }

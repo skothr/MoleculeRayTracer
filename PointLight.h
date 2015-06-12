@@ -9,6 +9,7 @@
 
 class ShaderProgram;
 
+//Defines a point light source.
 class PointLight : public Light
 {
 protected:

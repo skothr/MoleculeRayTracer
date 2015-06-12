@@ -20,9 +20,9 @@ const vec2 RayTracer::quadVertices[4] =		{	vec2(-1.0f, -1.0f),
 
 const GLuint RayTracer::quadIndices[6] = { 0, 1, 2, 0, 2, 3 };
 
-const int					RayTracer::AO_SAMPLES = 0,
-							RayTracer::SHADOW_DIVISION = 4,	//SHADOW_DIVISION*SHADOW_DIVISION total samples (divided along 2 dimensions)
-							RayTracer::NOISE_TEX_SIZE = 64;
+const int					RayTracer::AO_SAMPLES = 0,		//Number of samples for antialiasing
+							RayTracer::SHADOW_DIVISION = 4,	//(SHADOW_DIVISION*SHADOW_DIVISION) total samples (divided along 2 dimensions)
+							RayTracer::NOISE_TEX_SIZE = 64;	//Dimension size for noise texture
 
 vec4 noiseData[RayTracer::NOISE_TEX_SIZE][RayTracer::NOISE_TEX_SIZE];
 
@@ -43,6 +43,8 @@ RayTracer::~RayTracer()
 		glDeleteBuffers(1, &quad_vboID);
 		glDeleteBuffers(1, &quad_indID);
 	}
+	if(noise_texID)
+		glDeleteTextures(1, &noise_texID);
 }
 
 void RayTracer::init()
@@ -120,6 +122,7 @@ void RayTracer::onDrag(APoint m_pos, AVec d_pos, bool direct)
 
 void RayTracer::onKeyDown(KeyCode key)
 {
+	//Adjusts camera movement direction based on key pressed
 	switch(key)
 	{
 	case KeyCode::K_W:
@@ -146,6 +149,7 @@ void RayTracer::onKeyDown(KeyCode key)
 
 void RayTracer::onKeyUp(KeyCode key)
 {
+	//Undoes camera movement direction change from keyDown
 	switch(key)
 	{
 	case KeyCode::K_W:
@@ -172,6 +176,7 @@ void RayTracer::onKeyUp(KeyCode key)
 
 void RayTracer::onSizeChanged(AVec d_size)
 {
+	//Update aspect ratio
 	Control::onSizeChanged(d_size);
 	renderCamera.setAspect(size.x/size.y);
 }
@@ -200,23 +205,28 @@ void RayTracer::addObjects(const std::vector<RayObject*> &objs)
 	
 }
 */
+
+//Push current state of objects to the shader
 void RayTracer::updateObjects()
 {
 	SphereObject::updateShaderList(&rayProgram);
 	RectObject::updateShaderList(&rayProgram);
 }
 
+//Push current state of materials to the shader
 void RayTracer::updateMaterials()
 {
 	Material::updateShaderList(&rayProgram);
 }
 
+//Push current state of lights to the shader
 void RayTracer::updateLights()
 {
 	PointLight::updateShaderList(&rayProgram);
 	RectAreaLight::updateShaderList(&rayProgram);
 }
 
+//Sets antialiasing level (Currently does nothing)
 void RayTracer::setAntialiasing(AALevel aa)
 {
 	if(aa != antialiasing)
@@ -226,6 +236,7 @@ void RayTracer::setAntialiasing(AALevel aa)
 	}
 }
 
+//Sets whether ambient occlusion is on (Depending on whether it's hooked up in the current shader)
 void RayTracer::setAmbientOcclusion(bool on)
 {
 	if(on != ambientOcclusion)
@@ -235,6 +246,7 @@ void RayTracer::setAmbientOcclusion(bool on)
 	}
 }
 
+//Sets whether soft shadows are on (Only applies to area lights)
 void RayTracer::setShadows(bool on)
 {
 	if(on != shadows)
@@ -248,22 +260,27 @@ void RayTracer::update(const Time &dt)
 {
 	float speed = 20.0f;
 	
+	//Move camera
 	renderCamera.setPos(renderCamera.getPos()
 						+ (	renderCamera.getEyeDir()*forwardMoveMult
 							+ renderCamera.getRightDir()*rightMoveMult
 							+ renderCamera.getUpDir()*upMoveMult	)*speed*dt);
 
+	//Update camera matrices
 	renderCamera.update();
 }
 
+
+//Renders the scene
 void RayTracer::draw(GlInterface &gl)
 {
+	//Sets the viewport as the rectangle containing the ray tracer element
 	if(isolateViewport(gl))
 	{
 		Vec2i view_size = gl.getCurrView().size;
 		
+		//Render the quad with the ray tracing shader
 		rayProgram.setActive();
-
 		glBindVertexArray(quad_vaoID);
 			Point3f cam_pos = renderCamera.getPos();
 			Vec3f eye_dir = renderCamera.getEyeDir(),
@@ -294,6 +311,7 @@ void RayTracer::draw(GlInterface &gl)
 
 		glBindVertexArray(0);
 
+		//Pop previous viewport
 		restoreViewport(gl);
 	}
 }

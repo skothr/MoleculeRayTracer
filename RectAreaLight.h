@@ -9,6 +9,7 @@
 
 #define MAX_RECT_AREA_LIGHTS 8
 
+//Defines an area light (shape defined in the same way as a RectObject)
 class RectAreaLight : Light
 {
 protected:

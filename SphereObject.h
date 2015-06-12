@@ -11,6 +11,10 @@
 class ShaderProgram;
 class Material;
 
+//Defines a sphere in world space by a center and a radius.
+//	- If drawOnly is true, the sphere will just be rendered without otherwise affecting the scene.
+//		(set to true for shapes that represent lights, so the sphere doesn't block it).
+//	- The index is the index of this shape's information in the sphereList shader uniform.
 class SphereObject : public RayObject
 {
 protected:

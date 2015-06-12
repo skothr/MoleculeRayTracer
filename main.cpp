@@ -16,24 +16,25 @@
 
 int main()
 {
+	//Initialize GUI
 	initApollo();
 
 	Window		*window = new Window("Molecular Viewer", APoint(300, 250), AVec(1280, 720), DEFAULT_STATE);
 	
-	//Camera		camera(Point3f(0.0f, 2.0f, 5.0f), Vec3f(0.0f, 0.0f, -1.0f), Vec3f(0.0f, 1.0f, 0.0f));
+	//Create ray tracer object and connect to the window
 	RayTracer	rt(window, APoint(0.0f, 0.0f), AVec(1280.0f, 720.0f), DEFAULT_STATE);
 
+	//Attach to the edges of the window (in case it's resized)
 	rt.attachTo(window, Side::LEFT, 0);
 	rt.attachTo(window, Side::RIGHT, 0);
 	rt.attachTo(window, Side::TOP, 0);
 	rt.attachTo(window, Side::BOTTOM, 0);
-	
-	rt.setShadows(true);
 
+	//Create materials
 	Material		m0(Color(0.0f, 0.0f, 0.05f), Color(0.2f, 0.2f, 0.8f), Color(0.1f, 0.1f, 0.2f), Color(0.0f, 0.0f, 0.0f), 50.0f),
 					m1(Color(0.05f, 0.0f, 0.0f), Color(0.8f, 0.2f, 0.15f), Color(0.4f, 0.2f, 0.3f), Color(0.0f, 0.0f, 0.0f), 10.0f);
 
-
+	//Create random spheres
 	const int NUM_SPHERES = 89;
 	std::vector<SphereObject*> s;
 	s.reserve(NUM_SPHERES);
@@ -49,28 +50,18 @@ int main()
 		s.push_back(new SphereObject(Point3f(x*10.0f, y*10.0f, z*10.0f), 1.0f, (rand() % 2 ? &m0 : &m1)));
 	}
 
-	//SphereObject	s0(Point3f(0.0f, 0.0f, 0.0f), 1.0f, &m0),
-	//				s1(Point3f(2.0f, 2.0f, 0.0f), 1.0f, &m1),
-	//				s2(Point3f(4.0f, 4.0f, 0.0f), 1.0f, &m0),
-	//				s3(Point3f(6.0f, 6.0f, 0.0f), 1.0f, &m1),
-	//				s4(Point3f(8.0f, 8.0f, 0.0f), 1.0f, &m0),
-	//				s5(Point3f(10.0f, 10.0f, 0.0f), 1.0f, &m1),
-	//				s6(Point3f(12.0f, 12.0f, 0.0f), 1.0f, &m0);
-
-	//RectObject		r0(Point3f(2.0f, 3.0f, 0.0f), Point3f(-2.0f, 3.0f, 0.0f), Point3f(2.0f, 6.0f, 0.0f), &Material::LIGHT_MATERIAL);
-
-
+	//Create light source
 	//PointLight		l0(Point3f(0.0f, 20.0f, 0.0f), Color(0.5f, 0.5f, 0.5f));
 	RectAreaLight		l1(Point3f(3.0f, 20.0f, 3.0f), Point3f(-3.0f, 20.0f, 3.0f), Point3f(3.0f, 20.0f, -3.0f), Color(0.5f, 0.5f, 0.5f));
 	
+	//Send states to the raytracing shader
 	rt.updateObjects();
 	rt.updateLights();
 	rt.updateMaterials();
-
-	//rt.addObjects({&s0, &s1, &s2, &s3, &s4, &s5, &s6});
 	
 	HRes_Clock timer(true);
 
+	//Main window loop
 	while(window->isOpen())
 	{
 		if(Keyboard::keyDown(KeyCode::K_ESCAPE))
@@ -79,17 +70,23 @@ int main()
 			break;
 		}
 
+		//Handle window events
 		window->handleWindow();
 
+		//Update physics
 		timer.nextTimeFrame();
 		window->update(timer.dt);
 
+		//Render
 		window->draw();
 	}
 
+	//Clean up
 	for(auto ss : s)
 		delete ss;
 	s.clear();
+
+	cleanupApollo();
 
 	return 0;
 }
